@@ -1,4 +1,4 @@
-Animate text in unity by adding sinusoidal motion to it letter by letter.
+A script to animate text in unity by adding sinusoidal motion to it letter by letter.
 
 Script splits up textmesh pro UI object at runtime into individual letters spaced apart 
 -according to a value you specify and childs these letters to the original text object. 
