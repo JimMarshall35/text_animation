@@ -1,16 +1,13 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
 public class text_animator : MonoBehaviour
 {
-    private TextMeshProUGUI mytextmesh;
     private GameObject[] character_array;
     private bool animate_on;
 
-    [SerializeField] private float init_character_spacing = 40f;                      //spacing between letters as the word is reformed at runtime
-    [SerializeField] private Color myvertexcolour;                                    // colour of the reformed text
     [SerializeField] private float period = 0.4f;                                     // period of the sine wave used for moving the text
     [SerializeField] private Vector3 movement_vector = new Vector3(0f, 70f, 0f);      // the amount and direction by which the text moves per period
     [SerializeField] private float waitbetweenletters = 0.1f;                         // the time the script waits in seconds before triggering the next letters movement
@@ -21,44 +18,54 @@ public class text_animator : MonoBehaviour
     void Awake()
     {
         animate_on = false;
-        mytextmesh = GetComponent<TextMeshProUGUI>();
-        string mytext = mytextmesh.text;
-        character_array = new GameObject[mytext.Length];
-        Vector3 character_position = new Vector3(transform.position.x + mytext.Length*init_character_spacing, transform.position.y, transform.position.z);
-
-        int array_index = mytext.Length -1;
-
-        for(int i = mytext.Length -1; i>-1; i--) // instantiates letters in reverse order so that if they overlap it looks better
-        {
-            GameObject char_obj = Instantiate(Resources.Load<GameObject>("blank letter"), transform); 
-            char_obj.transform.position = character_position;     // instantiate blank template as child of this gameobject and set position
-
-            TextMeshProUGUI char_mesh = char_obj.GetComponent<TextMeshProUGUI>(); 
-            char_mesh.SetText(mytext[i].ToString());      // set text to correct letter of the original string
-            char_mesh.color = myvertexcolour;             // set text colour
-
-            character_array[array_index] = char_obj; // add each letter to an array so it can be animated separately
-            array_index--;
-
-            character_position.x -= init_character_spacing; // move "cursor" along to "type" next letter
-        }
-        Destroy(mytextmesh); // destroy original text
+        character_array = splitTMPRO(GetComponent<TextMeshProUGUI>());
 
         if (play_on_awake)
         {
-            toggleAnimation();
+            toggleAnimation(true);
         }
     }
-    public void toggleAnimation()
+    private GameObject[] splitTMPRO(TextMeshProUGUI mytextmesh)
     {
-        if (animate_on)
+        string mytext = mytextmesh.text;
+        GameObject[] array = new GameObject[mytext.Length];
+        Vector2 worddims = mytextmesh.GetPreferredValues();
+        mytextmesh.rectTransform.sizeDelta = new Vector2(worddims.x, worddims.y);
+        //mytextmesh.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, worddims.x);
+        RectTransform r = mytextmesh.rectTransform;
+        float startx = r.position.x - worddims.x / 2;
+        float starty = r.position.y;
+        float startz = r.position.z;
+
+        float offset = startx;
+        int index = 0;
+        foreach (char c in mytext)
         {
-            StopCoroutine(letterAnimator());
-            animate_on = false;
+            GameObject char_obj = Instantiate(Resources.Load<GameObject>("blank letter"), transform);
+            TextMeshProUGUI char_mesh = char_obj.GetComponent<TextMeshProUGUI>();
+            char_mesh.SetText(c.ToString());      // set text to correct letter of the original string
+            Vector2 dims = char_mesh.GetPreferredValues();
+            offset += dims.x;
+            Vector3 character_position = new Vector3(offset - dims.x / 2, starty, startz);
+
+            char_obj.transform.position = character_position;     // instantiate blank template as child of this gameobject and set position
+            char_mesh.rectTransform.sizeDelta = new Vector2(dims.x, dims.y);
+            array[index] = char_obj;
+            index++;
+        }
+        Destroy(mytextmesh); // destroy original text
+        return array;
+    }
+    public void toggleAnimation(bool on) // call to toggle animation on or off
+    {
+        if (on)
+        {
+            StartCoroutine(letterAnimator());
         }
         else
         {
-            StartCoroutine(letterAnimator());
+            StopCoroutine(letterAnimator());
+            animate_on = false;
         }
     }
     private IEnumerator animateSingle(GameObject character) // controls the motion of a single letter
